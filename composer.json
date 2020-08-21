@@ -1,0 +1,48 @@
+{
+    "name": "astuteo/astuteo-pulse",
+    "description": "Connecting Astuteo client sites to our monitor.",
+    "type": "craft-plugin",
+    "version": "1.0.1",
+    "keywords": [
+        "craft",
+        "cms",
+        "craftcms",
+        "craft-plugin",
+        "astuteo pulse"
+    ],
+    "support": {
+        "docs": "https://github.com/astuteollc/astuteo-pulse/blob/master/README.md",
+        "issues": "https://github.com/astuteollc/astuteo-pulse/issues"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Astuteo",
+            "homepage": "https://astuteo.com"
+        }
+    ],
+    "require": {
+        "craftcms/cms": "^3.4.0",
+        "ext-json": "*",
+        "sleiman/airtable-php": "^2.4"
+    },
+    "require-dev": {
+      "craftcms/cms": "^3.2.0",
+      "codeception/codeception": "^3.0",
+      "vlucas/phpdotenv": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+          "astuteo\\astuteopulse\\": "src/"
+        }
+    },
+    "extra": {
+        "name": "Astuteo Pulse",
+        "handle": "astuteo-pulse",
+        "developer": "Astuteo",
+        "developerUrl": "https://astuteo.com",
+        "documentationUrl": "https://github.com/astuteollc/astuteo-pulse/blob/master/README.md",
+        "changelogUrl": "https://raw.githubusercontent.com/astuteollc/astuteo-pulse/master/CHANGELOG.md",
+        "class": "astuteo\\astuteopulse\\AstuteoPulse"
+    }
+}
