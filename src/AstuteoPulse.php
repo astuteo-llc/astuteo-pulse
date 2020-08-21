@@ -12,7 +12,7 @@ namespace astuteo\astuteopulse;
 
 use Craft;
 use craft\base\Plugin;
-use astuteo\astuteotoolkit\services\ReportStatusService;
+use astuteo\astuteopulse\services\ReportStatusService;
 
 use yii\base\Event;
 
@@ -40,7 +40,7 @@ class AstuteoPulse extends Plugin
     // Public Properties
     // =========================================================================
 
-    public $schemaVersion = '1.0.3';
+    public $schemaVersion = '1.0.5';
     public $hasCpSettings = false;
     public $hasCpSection = false;
 
