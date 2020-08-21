@@ -25,6 +25,6 @@ class ReportJob extends BaseJob
      */
     protected function defaultDescription()
     {
-        return 'Send Heartbeat';
+        return 'Send Pulse';
     }
 }

@@ -40,7 +40,7 @@ class AstuteoPulse extends Plugin
     // Public Properties
     // =========================================================================
 
-    public $schemaVersion = '1.0.5';
+    public $schemaVersion = '1.0.6';
     public $hasCpSettings = false;
     public $hasCpSection = false;
 

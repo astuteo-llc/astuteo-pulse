@@ -4,6 +4,7 @@ namespace astuteo\astuteopulse\services;
 
 use astuteo\astuteopulse\ReportJob;
 use Craft;
+use craft\helpers\DateTimeHelper;
 use craft\helpers\App;
 use craft\helpers\UrlHelper;
 use craft\base\PluginInterface;
@@ -103,6 +104,7 @@ class ReportStatusService {
             'Site URL' => self::$_siteUrl,
             'Site Name' => Craft::$app->getSystemName(),
             'Craft Version' => 'Craft ' . App::editionName(Craft::$app->getEdition()) . ' ' . Craft::$app->getVersion(),
+            'Last Checked' => self::_timestamp(),
             'PHP Version' => App::phpVersion(),
             'DB Version' => self::_dbDriver(),
             'Plugins' => self::_plugins(),
@@ -144,6 +146,15 @@ class ReportStatusService {
         }, $plugins));
     }
 
+
+    private static function _timestamp(): string {
+        try {
+            $current = DateTimeHelper::toDateTime(DateTimeHelper::currentTimeStamp());
+        } catch (Exception $e) {
+            return '';
+        }
+        return $current->format('m/d/Y');
+    }
 
 
     private static function _updates(): string {
