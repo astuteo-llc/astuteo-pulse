@@ -2,7 +2,8 @@
     "name": "astuteo/astuteo-pulse",
     "description": "Connecting Astuteo client sites to our monitor.",
     "type": "craft-plugin",
-    "version": "1.0.1",
+    "prefer-stable": true,
+    "version": "1.0.2",
     "keywords": [
         "craft",
         "cms",
