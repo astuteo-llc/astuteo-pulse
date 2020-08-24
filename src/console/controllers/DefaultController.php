@@ -36,6 +36,8 @@ class DefaultController extends Controller
      */
     public function actionTakePulse()
     {
+        echo "Checking for system updates...\n";
+        Craft::$app->updates->getUpdates(1);
         ReportStatusService::makeReport();
         echo "Taking Pulse...\n";
         Craft::$app->queue->run();
