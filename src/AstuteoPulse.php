@@ -13,6 +13,7 @@ namespace astuteo\astuteopulse;
 use Craft;
 use craft\base\Plugin;
 use astuteo\astuteopulse\services\ReportStatusService;
+use astuteo\astuteopulse\services\BroadcastStatusService;
 
 use yii\base\Event;
 
