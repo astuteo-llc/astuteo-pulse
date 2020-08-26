@@ -3,7 +3,7 @@
     "description": "Connecting Astuteo client sites to our monitor.",
     "type": "craft-plugin",
     "prefer-stable": true,
-    "version": "1.0.7",
+    "version": "1.0.9",
     "keywords": [
         "craft",
         "cms",
@@ -23,7 +23,7 @@
         }
     ],
     "require": {
-        "craftcms/cms": "^3.4.0",
+        "craftcms/cms": "^3.0.0",
         "ext-json": "*",
         "sleiman/airtable-php": "^2.4"
     },
