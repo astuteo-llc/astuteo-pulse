@@ -3,7 +3,7 @@
     "description": "Connecting Astuteo client sites to our monitor.",
     "type": "craft-plugin",
     "prefer-stable": true,
-    "version": "2.0.1",
+    "version": "2.0.3",
     "keywords": [
         "craft",
         "cms",
