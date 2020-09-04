@@ -66,7 +66,8 @@ class BroadcastStatusService {
             'modules' => self::_modules(),
             'deprecationNotices' => self::_deprecations(),
             'pluginsText' => self::_plugins(),
-            'pluginsArray' => self::_pluginsArray(),
+            'pluginsArray' => self::_getAllPluginInfo(),
+            'pluginIssues' => self::_licenseIssues()
         ];
         $oneDayDuration = 60 * 60 * 24;
         Craft::$app->cache->set(self::$_cacheKey, true, $oneDayDuration);
@@ -100,51 +101,21 @@ class BroadcastStatusService {
     private static function _plugins(): string
     {
         $plugins = Craft::$app->plugins->getAllPlugins();
-
         return implode(PHP_EOL, array_map(function($plugin) {
             return "{$plugin->name} ({$plugin->developer}): {$plugin->version}";
         }, $plugins));
     }
 
-
-
-
     private static function _pluginLicenseIssues($handle): string {
         $issues = Craft::$app->plugins->getLicenseIssues($handle);
-
         return implode(PHP_EOL, array_map(function($issue) {
             return "{$issue}";
         },  $issues));
     }
 
-    /**
-     * Returns the list of plugins and versions
-     *
-     * @return json
-     */
-    private static function _pluginsArray(): array
-    {
-        $plugins = Craft::$app->plugins->getAllPlugins();
-
-        $pluginsArray = [];
-
-        foreach ($plugins as $plugin) {
-            $thisPlugin = [
-              'name' => $plugin->name,
-              'developer' => $plugin->developer,
-              'handle' => $plugin->handle,
-              'version' => $plugin->version,
-              'description' => $plugin->description,
-              'licenseIssues' => self::_pluginLicenseIssues($plugin->handle)
-            ];
-            $pluginsArray = array_merge($pluginsArray, [$thisPlugin]);
-        }
-
-//        var_dump($pluginsArray);
-//        var_dump($pluginsArray);
-        return $pluginsArray;
+    private static function _getAllPluginInfo(): array {
+        return Craft::$app->plugins->getAllPluginInfo();
     }
-
 
     private static function _timestamp(): string {
         try {
@@ -162,6 +133,20 @@ class BroadcastStatusService {
         } else {
             return false;
         }
+    }
+
+    private static function _licenseIssues(): string {
+        $pluginsService = Craft::$app->getPlugins();
+        $issuePlugins = [];
+        foreach ($pluginsService->getAllPlugins() as $pluginHandle => $plugin) {
+            if ($pluginsService->hasIssues($pluginHandle)) {
+                $issuePlugins[] = $plugin->name;
+            }
+        }
+
+        return implode(PHP_EOL, array_map(function($issue) {
+            return "{$issue} | ";
+        },  $issuePlugins));
     }
 
     private static function _updates(): string {
