@@ -67,7 +67,9 @@ class BroadcastStatusService {
             'deprecationNotices' => self::_deprecations(),
             'pluginsText' => self::_plugins(),
             'pluginsArray' => self::_getAllPluginInfo(),
-            'pluginIssues' => self::_licenseIssues()
+            'pluginIssues' => self::_licenseIssues(),
+            'packageJson' => self::_packageJson(),
+            'todos' => self::_todos(),
         ];
         $oneDayDuration = 60 * 60 * 24;
         Craft::$app->cache->set(self::$_cacheKey, true, $oneDayDuration);
@@ -91,6 +93,37 @@ class BroadcastStatusService {
         }
 
         return $driverName . ' ' . App::normalizeVersion($db->getSchema()->getServerVersion());
+    }
+
+    private static function _packageJson() {
+        $file = self::_basePath() . 'package.json'; // find better way for path
+        if(!file_exists($file)) {
+            return '';
+        }
+        return file_get_contents($file);
+    }
+
+    private static function _todos() {
+        $base = self::_basePath();
+        $jsTodo =  $base . 'todo-javascript.md';
+        $cssTodo =  $base . 'todo-styles.md';
+        $templatesTodo =  $base . 'todo-templates.md';
+        $todos = [];
+        if(file_exists($jsTodo)) {
+            array_push($todos, ['js' => file_get_contents($jsTodo)]);
+        }
+        if(file_exists($cssTodo)) {
+            array_push($todos, [ 'css' => file_get_contents($cssTodo) ]);
+        }
+        if(file_exists($templatesTodo)) {
+            array_push($todos, [ 'templates' => file_get_contents($templatesTodo) ]);
+        }
+        return json_encode($todos);
+    }
+
+
+    private static function _basePath() {
+        return  Craft::$app->config->configDir . '/../';
     }
 
     /**
