@@ -27,8 +27,6 @@ class BroadcastStatusService {
      */
     public static function makeReport()
     {
-        // We've checked recently enough, bail out
-//        if (Craft::$app->cache->get(self::$_cacheKey) !== false) return;
         self::broadcastInfo();
     }
 

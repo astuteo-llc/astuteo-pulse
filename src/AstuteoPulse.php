@@ -12,7 +12,6 @@ namespace astuteo\astuteopulse;
 
 use Craft;
 use craft\base\Plugin;
-use astuteo\astuteopulse\jobs\services\ReportStatusService;
 use astuteo\astuteopulse\jobs\services\BroadcastStatusService;
 
 use yii\base\Event;
@@ -41,7 +40,7 @@ class AstuteoPulse extends Plugin
     // Public Properties
     // =========================================================================
 
-    public $schemaVersion = '1.0.6';
+    public $schemaVersion = '3.0.0';
     public $hasCpSettings = false;
     public $hasCpSection = false;
 
@@ -52,20 +51,5 @@ class AstuteoPulse extends Plugin
     {
         parent::init();
         self::$plugin = $this;
-
-        if (Craft::$app->request->getIsCpRequest()) {
-            $this->_bindCpEvents();
-        }
     }
-
-    // Protected Methods
-    // =========================================================================
-    private function _bindCpEvents()
-    {
-        // Phone home for Airtable inventory
-        if (!Craft::$app->request->getIsAjax() && !Craft::$app->config->general->devMode) {
-            ReportStatusService::makeReport();
-        }
-    }
-
 }
