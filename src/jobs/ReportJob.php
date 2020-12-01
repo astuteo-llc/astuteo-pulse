@@ -1,11 +1,11 @@
 <?php
 
-namespace astuteo\astuteopulse;
+namespace astuteo\astuteopulse\jobs;
 
 use Craft;
 use craft\queue\BaseJob;
 
-use astuteo\astuteopulse\services\ReportStatusService;
+use astuteo\astuteopulse\jobs\services\ReportStatusService;
 
 /**
  * Job to make the request to the Airtable inventory

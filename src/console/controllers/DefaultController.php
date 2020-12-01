@@ -10,9 +10,9 @@
 
 namespace astuteo\astuteopulse\console\controllers;
 
-use astuteo\astuteopulse\AstuteoPulse;
+use astuteo\astuteopulse\jobs\AstuteoPulse;
 
-use astuteo\astuteopulse\services\ReportStatusService;
+use astuteo\astuteopulse\jobs\services\ReportStatusService;
 use Craft;
 use yii\console\Controller;
 use yii\helpers\Console;

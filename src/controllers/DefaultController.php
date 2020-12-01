@@ -10,7 +10,7 @@
 
 namespace astuteo\astuteopulse\controllers;
 
-use astuteo\astuteopulse\AstuteoPulse;
+use astuteo\astuteopulse\jobs\ReportJob;
 use astuteo\astuteopulse\services\BroadcastStatusService;
 
 use Craft;

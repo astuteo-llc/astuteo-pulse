@@ -2,7 +2,7 @@
 
 namespace astuteo\astuteopulse\services;
 
-use astuteo\astuteopulse\ReportJob;
+use astuteo\astuteopulse\jobs\ReportJob;
 use Craft;
 use craft\helpers\DateTimeHelper;
 use craft\helpers\App;
