@@ -26,26 +26,11 @@ use yii\base\Event;
  */
 class AstuteoPulse extends Plugin
 {
-    // Static Properties
-    // =========================================================================
 
-    /**
-     * Static property that is an instance of this plugin class so that it can be accessed via
-     * AstuteoPulse::$plugin
-     *
-     * @var AstuteoPulse
-     */
     public static $plugin;
-
-    // Public Properties
-    // =========================================================================
-
-    public string $schemaVersion = '3.0.0';
+    public string $schemaVersion = '4.0.0';
     public bool $hasCpSettings = false;
     public bool $hasCpSection = false;
-
-    // Public Methods
-    // =========================================================================
 
     public function init()
     {

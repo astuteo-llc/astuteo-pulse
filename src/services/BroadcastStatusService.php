@@ -14,23 +14,15 @@ use yii\base\Module;
  * Class ReportStatusService
  */
 class BroadcastStatusService {
-    // Also borrowing this from Viget
-    // https://github.com/vigetlabs/craft-viget-base/
-    /**
-     * @var
-     */
-    private static $_cacheKey;
-    private static $_siteUrl;
+    private static string $_siteUrl;
 
-    /**
-     * If we haven't checked within a day, push a new job to the queue
-     */
-    public static function makeReport()
+    public static function makeReport(): void
     {
         self::broadcastInfo();
     }
 
-    public static function checkAuthorized() {
+    public static function checkAuthorized(): bool
+    {
         $sitekey = getenv('ASTUTEO_API_KEY');
         $requestkey = Craft::$app->request->getParam('key');
 
@@ -44,7 +36,8 @@ class BroadcastStatusService {
     }
 
 
-    public static function broadcastInfo() {
+    public static function broadcastInfo(): bool|string
+    {
         Craft::$app->updates->getUpdates(1);
         if(!self::checkAuthorized()) {
             return false;
@@ -69,8 +62,6 @@ class BroadcastStatusService {
             'packageJson' => self::_packageJson(),
             'todos' => self::_todos(),
         ];
-        $oneDayDuration = 60 * 60 * 24;
-        Craft::$app->cache->set(self::$_cacheKey, true, $oneDayDuration);
         return json_encode($siteInfo);
     }
 
@@ -93,7 +84,8 @@ class BroadcastStatusService {
         return $driverName . ' ' . App::normalizeVersion($db->getSchema()->getServerVersion());
     }
 
-    private static function _packageJson() {
+    private static function _packageJson(): bool|string
+    {
         $file = self::_basePath() . 'package.json'; // find better way for path
         if(!file_exists($file)) {
             return '';
@@ -101,26 +93,28 @@ class BroadcastStatusService {
         return file_get_contents($file);
     }
 
-    private static function _todos() {
+    private static function _todos(): bool|string
+    {
         $base = self::_basePath();
         $jsTodo =  $base . 'todo-javascript.md';
         $cssTodo =  $base . 'todo-styles.md';
         $templatesTodo =  $base . 'todo-templates.md';
         $todos = [];
         if(file_exists($jsTodo)) {
-            array_push($todos, ['js' => file_get_contents($jsTodo)]);
+            $todos[] = ['js' => file_get_contents($jsTodo)];
         }
         if(file_exists($cssTodo)) {
-            array_push($todos, [ 'css' => file_get_contents($cssTodo) ]);
+            $todos[] = ['css' => file_get_contents($cssTodo)];
         }
         if(file_exists($templatesTodo)) {
-            array_push($todos, [ 'templates' => file_get_contents($templatesTodo) ]);
+            $todos[] = ['templates' => file_get_contents($templatesTodo)];
         }
         return json_encode($todos);
     }
 
 
-    private static function _basePath() {
+    private static function _basePath(): string
+    {
         return  Craft::$app->config->configDir . '/../';
     }
 
@@ -135,13 +129,6 @@ class BroadcastStatusService {
         return implode(PHP_EOL, array_map(function($plugin) {
             return "{$plugin->name} ({$plugin->developer}): {$plugin->version}";
         }, $plugins));
-    }
-
-    private static function _pluginLicenseIssues($handle): string {
-        $issues = Craft::$app->plugins->getLicenseIssues($handle);
-        return implode(PHP_EOL, array_map(function($issue) {
-            return "{$issue}";
-        },  $issues));
     }
 
     private static function _getAllPluginInfo(): array {
@@ -189,22 +176,12 @@ class BroadcastStatusService {
         }
         return $message;
     }
-
-    /**
-     * Returns Deprecation count
-     * @return string
-     */
-
+    
     private static function _deprecations(): string
     {
         return Craft::$app->getDeprecator()->getTotalLogs();
     }
 
-    /**
-     * Returns the list of modules
-     *
-     * @return string
-     */
     private static function _modules(): string
     {
         $modules = [];
