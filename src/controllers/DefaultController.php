@@ -16,7 +16,7 @@ use craft\web\Controller;
 
 class DefaultController extends Controller
 {
-    protected array|int|bool $allowAnonymous = ['index', 'do-something'];
+    protected array|int|bool $allowAnonymous = ['index'];
     public function actionIndex(): bool|string
     {
         return BroadcastStatusService::broadcastInfo();

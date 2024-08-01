@@ -9,6 +9,7 @@ use craft\helpers\UrlHelper;
 use craft\base\PluginInterface;
 use Exception;
 use yii\base\Module;
+use craft\base\ApplicationTrait;
 
 /**
  * Class ReportStatusService
@@ -48,7 +49,7 @@ class BroadcastStatusService {
             'url' => self::$_siteUrl,
             'name' => Craft::$app->getSystemName(),
             'system' => 'Craft',
-            'systemVersion' => App::editionName(Craft::$app->getEdition()) . ' ' . Craft::$app->getVersion(),
+            'systemVersion' => Craft::$app->edition . ' ' . Craft::$app->getVersion(),
             'lastChecked' => self::_timestamp(),
             'phpVersion' => App::phpVersion(),
             'dbVersion' => self::_dbDriver(),
