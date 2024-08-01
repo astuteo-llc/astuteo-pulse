@@ -3,7 +3,7 @@
     "description": "Connecting Astuteo client sites to our monitor.",
     "type": "craft-plugin",
     "prefer-stable": true,
-    "version": "5.0.0-dev",
+    "version": "1.2.0",
     "keywords": [
         "craft",
         "cms",
@@ -11,6 +11,14 @@
         "craft-plugin",
         "astuteo pulse"
     ],
+    "scripts": {
+        "changelog": "conventional-changelog",
+        "release": "conventional-changelog --commit",
+        "release:patch": "conventional-changelog --patch --commit",
+        "release:minor": "conventional-changelog --minor --commit",
+        "release:beta": "conventional-changelog --minor --beta --commit",
+        "release:major": "conventional-changelog --major --commit"
+    },
     "support": {
         "docs": "https://github.com/astuteollc/astuteo-pulse/blob/master/README.md",
         "issues": "https://github.com/astuteollc/astuteo-pulse/issues"
@@ -28,11 +36,12 @@
         "ext-json": "*"
     },
     "require-dev": {
-      "vlucas/phpdotenv": "^3.0"
+        "vlucas/phpdotenv": "^3.0",
+        "marcocesarato/php-conventional-changelog": "^1.17"
     },
     "autoload": {
         "psr-4": {
-          "astuteo\\astuteopulse\\": "src/"
+            "astuteo\\astuteopulse\\": "src/"
         }
     },
     "extra": {

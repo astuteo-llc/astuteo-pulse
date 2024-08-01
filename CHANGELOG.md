@@ -1,3 +1,14 @@
+<!--- BEGIN HEADER -->
+# Changelog
+
+All notable changes to this project will be documented in this file.
+<!--- END HEADER -->
+
+## [1.2.0](https://github.com/astuteo-llc/astuteo-pulse/compare/v1.1.0...v1.2.0) (2024-08-01)
+
+
+---
+
 # Astuteo Pulse Changelog
 
 All notable changes to this project will be documented in this file.
