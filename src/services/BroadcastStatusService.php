@@ -49,7 +49,7 @@ class BroadcastStatusService {
             'url' => self::$_siteUrl,
             'name' => Craft::$app->getSystemName(),
             'system' => 'Craft',
-            'systemVersion' => Craft::$app->edition . ' ' . Craft::$app->getVersion(),
+            'systemVersion' => (string)Craft::$app->edition->value . ' ' . Craft::$app->getVersion(),
             'lastChecked' => self::_timestamp(),
             'phpVersion' => App::phpVersion(),
             'dbVersion' => self::_dbDriver(),
