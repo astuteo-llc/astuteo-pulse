@@ -27,15 +27,8 @@ class BroadcastStatusService {
         $sitekey = getenv('ASTUTEO_API_KEY');
         $requestkey = Craft::$app->request->getParam('key');
 
-        if($requestkey === '') {
-            return false;
-        }
-        if($sitekey === $requestkey) {
-            return true;
-        }
-        return false;
+        return $requestkey !== '' && $sitekey === $requestkey;
     }
-
 
     public static function broadcastInfo(): bool|string
     {
@@ -66,116 +59,89 @@ class BroadcastStatusService {
         return json_encode($siteInfo);
     }
 
-
-    /**
-     * Returns the DB driver name and version
-     *
-     * @return string
-     */
     private static function _dbDriver(): string
     {
         $db = Craft::$app->getDb();
-
-        if ($db->getIsMysql()) {
-            $driverName = 'MySQL';
-        } else {
-            $driverName = 'PostgreSQL';
-        }
-
+        $driverName = $db->getIsMysql() ? 'MySQL' : 'PostgreSQL';
         return $driverName . ' ' . App::normalizeVersion($db->getSchema()->getServerVersion());
     }
 
-    private static function _packageJson(): bool|string
+    private static function _packageJson(): string
     {
-        $file = self::_basePath() . 'package.json'; // find better way for path
-        if(!file_exists($file)) {
-            return '';
-        }
-        return file_get_contents($file);
+        $file = self::_basePath() . 'package.json';
+        return file_exists($file) ? file_get_contents($file) : '';
     }
 
-    private static function _todos(): bool|string
+    private static function _todos(): string
     {
         $base = self::_basePath();
-        $jsTodo =  $base . 'todo-javascript.md';
-        $cssTodo =  $base . 'todo-styles.md';
-        $templatesTodo =  $base . 'todo-templates.md';
+        $todoFiles = [
+            'js' => $base . 'todo-javascript.md',
+            'css' => $base . 'todo-styles.md',
+            'templates' => $base . 'todo-templates.md'
+        ];
+
         $todos = [];
-        if(file_exists($jsTodo)) {
-            $todos[] = ['js' => file_get_contents($jsTodo)];
-        }
-        if(file_exists($cssTodo)) {
-            $todos[] = ['css' => file_get_contents($cssTodo)];
-        }
-        if(file_exists($templatesTodo)) {
-            $todos[] = ['templates' => file_get_contents($templatesTodo)];
+        foreach ($todoFiles as $type => $file) {
+            if (file_exists($file)) {
+                $todos[] = [$type => file_get_contents($file)];
+            }
         }
         return json_encode($todos);
     }
 
-
     private static function _basePath(): string
     {
-        return  Craft::$app->config->configDir . '/../';
+        return Craft::$app->config->configDir . '/../';
     }
 
-    /**
-     * Returns the list of plugins and versions
-     *
-     * @return string
-     */
     private static function _plugins(): string
     {
         $plugins = Craft::$app->plugins->getAllPlugins();
-        return implode(PHP_EOL, array_map(function($plugin) {
-            return "{$plugin->name} ({$plugin->developer}): {$plugin->version}";
-        }, $plugins));
+        return implode(PHP_EOL, array_map(
+            fn($plugin) => "{$plugin->name} ({$plugin->developer}): {$plugin->version}",
+            $plugins
+        ));
     }
 
-    private static function _getAllPluginInfo(): array {
+    private static function _getAllPluginInfo(): array 
+    {
         return Craft::$app->plugins->getAllPluginInfo();
     }
 
-    private static function _timestamp(): string {
+    private static function _timestamp(): string 
+    {
         try {
-            $current = DateTimeHelper::toDateTime(DateTimeHelper::currentTimeStamp());
-        } catch (Exception $e) {
+            return DateTimeHelper::toDateTime(DateTimeHelper::currentTimeStamp())->format('m/d/Y');
+        } catch (Exception) {
             return '';
         }
-        return $current->format('m/d/Y');
     }
 
-
-    private static function _criticalUpdate(): bool {
-        if(Craft::$app->getUpdates()->getIsCriticalUpdateAvailable()) {
-            return true;
-        } else {
-            return false;
-        }
+    private static function _criticalUpdate(): bool 
+    {
+        return Craft::$app->getUpdates()->getIsCriticalUpdateAvailable();
     }
 
-    private static function _licenseIssues(): string {
+    private static function _licenseIssues(): string 
+    {
         $pluginsService = Craft::$app->getPlugins();
-        $issuePlugins = [];
-        foreach ($pluginsService->getAllPlugins() as $pluginHandle => $plugin) {
-            if ($pluginsService->hasIssues($pluginHandle)) {
-                $issuePlugins[] = $plugin->name;
-            }
-        }
+        $issuePlugins = array_filter(
+            $pluginsService->getAllPlugins(),
+            fn($plugin, $handle) => $pluginsService->hasIssues($handle),
+            ARRAY_FILTER_USE_BOTH
+        );
 
-        return implode(PHP_EOL, array_map(function($issue) {
-            return "{$issue} | ";
-        },  $issuePlugins));
+        return implode(PHP_EOL, array_map(
+            fn($plugin) => "{$plugin->name} | ",
+            $issuePlugins
+        ));
     }
 
-    private static function _updates(): string {
-        $message = 'Up-to-date';
-        $updates =  Craft::$app->getUpdates();
-        $totalupdates = $updates->getTotalAvailableUpdates();
-        if($totalupdates != 0) {
-            $message = $totalupdates;
-        }
-        return $message;
+    private static function _updates(): string 
+    {
+        $totalUpdates = Craft::$app->getUpdates()->getTotalAvailableUpdates();
+        return $totalUpdates === 0 ? 'Up-to-date' : (string)$totalUpdates;
     }
     
     private static function _deprecations(): string
@@ -190,28 +156,23 @@ class BroadcastStatusService {
             if ($module instanceof PluginInterface) {
                 continue;
             }
-            if ($module instanceof Module) {
-                $modules[$id] = get_class($module);
-            } else if (is_string($module)) {
-                $modules[$id] = $module;
-            } else if (is_array($module) && isset($module['class'])) {
-                $modules[$id] = $module['class'];
-            }
+            
+            $modules[$id] = match(true) {
+                $module instanceof Module => get_class($module),
+                is_string($module) => $module,
+                is_array($module) && isset($module['class']) => $module['class'],
+                default => null
+            };
         }
 
-        return implode(PHP_EOL, $modules);
+        return implode(PHP_EOL, array_filter($modules));
     }
 
-    /**
-     * Returns the system version information
-     * 
-     * @return string
-     */
     private static function _getSystemVersion(): string
     {
         try {
             return (string)Craft::$app->edition->value . ' ' . Craft::$app->getVersion();
-        } catch (Exception $e) {
+        } catch (Exception) {
             return 'Unknown Version';
         }
     }
