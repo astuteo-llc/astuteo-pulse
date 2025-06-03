@@ -4,6 +4,11 @@
 All notable changes to this project will be documented in this file.
 <!--- END HEADER -->
 
+## [5.1.1](https://github.com/astuteo-llc/astuteo-pulse/compare/v5.1.0...v5.1.1) (2025-06-03)
+
+
+---
+
 ## [5.1.0](https://github.com/astuteo-llc/astuteo-pulse/compare/v5.0.1...v5.1.0) (2024-08-01)
 
 

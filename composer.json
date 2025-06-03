@@ -3,7 +3,7 @@
     "description": "Connecting Astuteo client sites to our monitor.",
     "type": "craft-plugin",
     "prefer-stable": true,
-    "version": "5.1.0",
+    "version": "5.1.1",
     "keywords": [
         "craft",
         "cms",
@@ -36,7 +36,8 @@
         "ext-json": "*"
     },
     "require-dev": {
-        "vlucas/phpdotenv": "^3.0"
+        "vlucas/phpdotenv": "^3.0",
+        "marcocesarato/php-conventional-changelog": "^1.17"
     },
     "autoload": {
         "psr-4": {
