@@ -49,7 +49,7 @@ class BroadcastStatusService {
             'url' => self::$_siteUrl,
             'name' => Craft::$app->getSystemName(),
             'system' => 'Craft',
-            'systemVersion' => (string)Craft::$app->edition->value . ' ' . Craft::$app->getVersion(),
+            'systemVersion' => self::_getSystemVersion(),
             'lastChecked' => self::_timestamp(),
             'phpVersion' => App::phpVersion(),
             'dbVersion' => self::_dbDriver(),
@@ -200,5 +200,19 @@ class BroadcastStatusService {
         }
 
         return implode(PHP_EOL, $modules);
+    }
+
+    /**
+     * Returns the system version information
+     * 
+     * @return string
+     */
+    private static function _getSystemVersion(): string
+    {
+        try {
+            return (string)Craft::$app->edition->value . ' ' . Craft::$app->getVersion();
+        } catch (Exception $e) {
+            return 'Unknown Version';
+        }
     }
 }
