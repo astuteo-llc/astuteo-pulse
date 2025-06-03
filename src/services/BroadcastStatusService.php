@@ -9,7 +9,6 @@ use craft\helpers\UrlHelper;
 use craft\base\PluginInterface;
 use Exception;
 use yii\base\Module;
-use craft\base\ApplicationTrait;
 
 /**
  * Class BroadcastStatusService

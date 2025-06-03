@@ -10,10 +10,9 @@
 
 namespace astuteo\astuteopulse;
 
-use Craft;
 use craft\base\Plugin;
-use astuteo\astuteopulse\jobs\services\BroadcastStatusService;
-
+use craft\events\RegisterUrlRulesEvent;
+use craft\web\UrlManager;
 use yii\base\Event;
 
 /**
@@ -36,5 +35,14 @@ class AstuteoPulse extends Plugin
     {
         parent::init();
         self::$plugin = $this;
+
+        Event::on(
+            UrlManager::class,
+            UrlManager::EVENT_REGISTER_SITE_URL_RULES,
+            function(RegisterUrlRulesEvent $event) {
+                $event->rules['astuteo-pulse'] = 'astuteo-pulse/default/index';
+                $event->rules['astuteo-pulse/json'] = 'astuteo-pulse/default/json';
+            }
+        );
     }
 }
