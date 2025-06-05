@@ -267,6 +267,11 @@ class BroadcastStatusService {
         }
     }
 
+    /*
+     * Gets the Craft edition name
+     *
+     * @return string Human friendly edition name or 'Unknown Edition'
+     */
     private static function _getEdition(): string {
         try {
             return (string)Craft::$app->edition->getEditionName();
