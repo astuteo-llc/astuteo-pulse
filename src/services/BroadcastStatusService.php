@@ -65,6 +65,7 @@ class BroadcastStatusService {
                 'url' => self::$_siteUrl,
                 'name' => Craft::$app->getSystemName(),
                 'system' => 'Craft',
+                'systemEdition' => self::_getEdition(),
                 'systemVersion' => self::_getSystemVersion(),
                 'lastChecked' => self::_timestamp(),
                 'phpVersion' => App::phpVersion(),
@@ -260,9 +261,17 @@ class BroadcastStatusService {
     private static function _getSystemVersion(): string
     {
         try {
-            return (string)Craft::$app->edition->value . ' ' . Craft::$app->getVersion();
+            return Craft::$app->getVersion();
         } catch (Exception) {
             return 'Unknown Version';
+        }
+    }
+
+    private static function _getEdition(): string {
+        try {
+            return (string)Craft::$app->edition->getEditionName();
+        } catch (Exception) {
+            return 'Unknown Edition';
         }
     }
 }
