@@ -218,7 +218,7 @@ class BroadcastStatusService {
         $totalUpdates = Craft::$app->getUpdates()->getTotalAvailableUpdates();
         return $totalUpdates === 0 ? 'Up-to-date' : (string)$totalUpdates;
     }
-    
+
     /**
      * Gets the total number of deprecation notices
      * 
@@ -241,7 +241,7 @@ class BroadcastStatusService {
             if ($module instanceof PluginInterface) {
                 continue;
             }
-            
+
             $modules[$id] = match(true) {
                 $module instanceof Module => get_class($module),
                 is_string($module) => $module,
@@ -274,7 +274,12 @@ class BroadcastStatusService {
      */
     private static function _getEdition(): string {
         try {
-            return (string)Craft::$app->edition->getEditionName();
+            // Check if we're using Craft 5 (has name property)
+            if (property_exists(Craft::$app->edition, 'name')) {
+                return (string)Craft::$app->edition->name;
+            }
+            // Fall back to Craft 4 method
+            return Craft::$app->edition->getEditionName();
         } catch (Exception) {
             return 'Unknown Edition';
         }
