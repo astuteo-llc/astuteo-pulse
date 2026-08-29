@@ -19,6 +19,9 @@ class BroadcastStatusService {
     // Declared so the monitor can branch when the existing untyped keys are reshaped.
     private const FEED_VERSION = 1;
 
+    // Custom rather than Authorization, which some hosts strip before it reaches PHP.
+    private const AUTH_HEADER = 'X-Astuteo-Key';
+
     private static string $_siteUrl;
 
     /**
@@ -38,10 +41,14 @@ class BroadcastStatusService {
      */
     public static function checkAuthorized(): bool
     {
-        $sitekey = getenv('ASTUTEO_API_KEY');
-        $requestkey = Craft::$app->request->getParam('key');
+        $siteKey = (string)getenv('ASTUTEO_API_KEY');
+        if ($siteKey === '') {
+            return false; // an unset key must never authorize, only deny
+        }
 
-        return $requestkey !== '' && $sitekey === $requestkey;
+        $requestKey = (string)Craft::$app->request->getHeaders()->get(self::AUTH_HEADER, '');
+
+        return hash_equals($siteKey, $requestKey);
     }
 
     /**
