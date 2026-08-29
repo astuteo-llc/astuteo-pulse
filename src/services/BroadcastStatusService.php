@@ -16,6 +16,9 @@ use yii\base\Module;
  * Service for broadcasting system status information for Craft CMS installations.
  */
 class BroadcastStatusService {
+    // Declared so the monitor can branch when the existing untyped keys are reshaped.
+    private const FEED_VERSION = 1;
+
     private static string $_siteUrl;
 
     /**
@@ -79,6 +82,8 @@ class BroadcastStatusService {
                 'pluginIssues' => self::_licenseIssues(),
                 'packageJson' => self::_packageJson(),
                 'todos' => self::_todos(),
+                'feedVersion' => self::FEED_VERSION,
+                'host' => HostStatusService::get(),
             ]
         ];
         return json_encode($siteInfo);
