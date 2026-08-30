@@ -16,6 +16,8 @@ use yii\base\Module;
  * Service for broadcasting system status information for Craft CMS installations.
  */
 class BroadcastStatusService {
+    public const CREDENTIAL_HEADER = 'X-Astuteo-Pulse-Key';
+
     private static string $_siteUrl;
 
     /**
@@ -35,10 +37,41 @@ class BroadcastStatusService {
      */
     public static function checkAuthorized(): bool
     {
-        $sitekey = getenv('ASTUTEO_API_KEY');
-        $requestkey = Craft::$app->request->getParam('key');
+        $request = Craft::$app->getRequest();
 
-        return $requestkey !== '' && $sitekey === $requestkey;
+        return self::credentialMatches(
+            getenv('ASTUTEO_API_KEY'),
+            $request->getHeaders()->get(self::CREDENTIAL_HEADER),
+            $request->getParam('key')
+        );
+    }
+
+    /**
+     * Compares a presented credential against the site key
+     *
+     * The header is authoritative; the query parameter is the deprecated transitional path kept
+     * so a site and the monitor can update independently. Both are removed together in a later
+     * release, at which point the query parameter stops being accepted.
+     *
+     * @param mixed $siteKey Configured key, or false when the environment variable is unset
+     * @param mixed $header Credential presented in the header, if any
+     * @param mixed $queryParam Credential presented in the query string, if any
+     * @return bool True when a presented credential matches
+     */
+    public static function credentialMatches(mixed $siteKey, mixed $header, mixed $queryParam): bool
+    {
+        // getenv() returns false when unset, and hash_equals() raises a TypeError on a non-string.
+        if (!is_string($siteKey) || $siteKey === '') {
+            return false;
+        }
+
+        $presented = is_string($header) && $header !== '' ? $header : $queryParam;
+
+        if (!is_string($presented) || $presented === '') {
+            return false;
+        }
+
+        return hash_equals($siteKey, $presented);
     }
 
     /**
