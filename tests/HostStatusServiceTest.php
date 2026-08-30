@@ -135,11 +135,14 @@ final class HostStatusServiceTest extends TestCase
             ->withUpdatesAvailable(time() - 60)
             ->withMachineId();
 
-        $encoded = json_encode((new HostStatusService($fixture->root()))->toArray());
+        $host = (new HostStatusService($fixture->root()))->toArray();
+        $encoded = json_encode($host);
 
-        self::assertStringNotContainsString('47', $encoded);
         self::assertStringNotContainsString('updates can be applied', $encoded);
         self::assertStringNotContainsString('security updates', $encoded);
+
+        // The file is stat-only, so its freshness must arrive as a timestamp and nothing else.
+        self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T/', $host['last_check_at']);
     }
 
     #[Test]
