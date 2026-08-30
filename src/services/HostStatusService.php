@@ -65,6 +65,29 @@ class HostStatusService
     }
 
     /**
+     * The all-unknown shape, for callers that could not run a read at all.
+     *
+     * @return array<string, mixed>
+     */
+    public static function unavailable(string $reason): array
+    {
+        return [
+            'reboot_pending' => null,
+            'reboot_pending_since' => null,
+            'auto_updates_enabled' => null,
+            'last_check_at' => null,
+            'host_id' => null,
+            'unknown' => [
+                'reboot_pending' => $reason,
+                'reboot_pending_since' => $reason,
+                'auto_updates_enabled' => $reason,
+                'last_check_at' => $reason,
+                'host_id' => $reason,
+            ],
+        ];
+    }
+
+    /**
      * @return array{0: bool|null, 1: string|null}
      */
     private function reboot(): array

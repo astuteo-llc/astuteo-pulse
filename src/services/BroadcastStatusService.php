@@ -79,14 +79,30 @@ class BroadcastStatusService {
                 'pluginIssues' => self::_licenseIssues(),
                 'packageJson' => self::_packageJson(),
                 'todos' => self::_todos(),
+                'host' => self::_host(),
             ]
         ];
         return json_encode($siteInfo);
     }
 
     /**
+     * Gets host reboot and patch-liveness state
+     *
+     * @return array<string, mixed> Host state, or the all-unknown shape if the read failed
+     */
+    private static function _host(): array
+    {
+        try {
+            return (new HostStatusService())->toArray();
+        } catch (\Throwable $e) {
+            // A host read must never be able to take the rest of the feed down.
+            return HostStatusService::unavailable('reader-failed');
+        }
+    }
+
+    /**
      * Gets the database driver name and version
-     * 
+     *
      * @return string Database driver name and version
      */
     private static function _dbDriver(): string
