@@ -54,9 +54,6 @@ class BroadcastStatusService {
      * release, at which point the query parameter stops being accepted.
      *
      * @param mixed $siteKey Configured key, or false when the environment variable is unset
-     * @param mixed $header Credential presented in the header, if any
-     * @param mixed $queryParam Credential presented in the query string, if any
-     * @return bool True when a presented credential matches
      */
     public static function credentialMatches(mixed $siteKey, mixed $header, mixed $queryParam): bool
     {
@@ -129,7 +126,9 @@ class BroadcastStatusService {
             return (new HostStatusService())->toArray();
         } catch (\Throwable $e) {
             // A host read must never be able to take the rest of the feed down.
-            return HostStatusService::unavailable('reader-failed');
+            Craft::error('Host status read failed: ' . $e->getMessage(), __METHOD__);
+
+            return HostStatusService::unavailable();
         }
     }
 

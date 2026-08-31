@@ -39,9 +39,27 @@ final class HostFixture
         return $this->root;
     }
 
+    /** A host with the helper installed always has /var/run, so the fixture models both. */
     public function withNotifierHelper(): self
     {
-        return $this->write('usr/share/update-notifier/notify-reboot-required', "#!/bin/sh\n");
+        $this->write('usr/share/update-notifier/notify-reboot-required', "#!/bin/sh\n");
+        @mkdir($this->root . '/var/run', 0777, true);
+
+        return $this;
+    }
+
+    /** Reproduces a /var/run the web user cannot search, where flag absence proves nothing. */
+    public function withUnsearchableRebootDir(): self
+    {
+        $dir = $this->root . '/var/run';
+
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+
+        chmod($dir, 0000);
+
+        return $this;
     }
 
     public function withRebootRequired(?int $mtime = null): self
@@ -91,8 +109,13 @@ final class HostFixture
 
     public function withUnreadable(string $relativePath): self
     {
-        $this->write($relativePath, '');
-        chmod($this->root . '/' . $relativePath, 0000);
+        $target = $this->root . '/' . $relativePath;
+
+        if (!file_exists($target)) {
+            $this->write($relativePath, '');
+        }
+
+        chmod($target, 0000);
 
         return $this;
     }

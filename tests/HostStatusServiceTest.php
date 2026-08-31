@@ -5,23 +5,11 @@ declare(strict_types=1);
 namespace astuteo\astuteopulse\tests;
 
 use astuteo\astuteopulse\services\HostStatusService;
-use astuteo\astuteopulse\tests\support\HostFixture;
+use astuteo\astuteopulse\tests\support\HostTestCase;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 
-final class HostStatusServiceTest extends TestCase
+final class HostStatusServiceTest extends HostTestCase
 {
-    private array $fixtures = [];
-
-    protected function tearDown(): void
-    {
-        foreach ($this->fixtures as $fixture) {
-            $fixture->cleanup();
-        }
-
-        $this->fixtures = [];
-    }
-
     #[Test]
     public function missing_notifier_helper_reports_reboot_pending_as_unknown_not_false(): void
     {
@@ -36,7 +24,27 @@ final class HostStatusServiceTest extends TestCase
             $host['reboot_pending'],
             'A host that cannot raise the reboot flag must not report as not-needing-a-reboot.'
         );
-        self::assertSame('reboot-notifier-absent', $host['unknown']['reboot_pending']);
+        self::assertSame('reboot-notifier-absent', $this->reasons($host['unknown'])['reboot_pending']);
+    }
+
+    #[Test]
+    public function an_unsearchable_reboot_directory_reports_unknown_not_false(): void
+    {
+        $this->skipIfRoot();
+
+        $fixture = $this->fixture()
+            ->withNotifierHelper()
+            ->withAutoUpgrades(true)
+            ->withMachineId()
+            ->withUnsearchableRebootDir();
+
+        $host = (new HostStatusService($fixture->root()))->toArray();
+
+        self::assertNull(
+            $host['reboot_pending'],
+            'A flag we could not look for is not the same as a flag that is absent.'
+        );
+        self::assertSame('source-unreadable', $this->reasons($host['unknown'])['reboot_pending']);
     }
 
     #[Test]
@@ -99,14 +107,85 @@ final class HostStatusServiceTest extends TestCase
     }
 
     #[Test]
-    public function a_bare_root_reports_every_field_unknown_with_a_reason(): void
+    public function a_commented_out_directive_does_not_count_as_enabled(): void
+    {
+        foreach (["// APT::Periodic::Unattended-Upgrade \"1\";\n", "# APT::Periodic::Unattended-Upgrade \"1\";\n"] as $config) {
+            $fixture = $this->fixture()->withNotifierHelper()->withRawAutoUpgrades($config)->withMachineId();
+
+            $host = (new HostStatusService($fixture->root()))->toArray();
+
+            self::assertNull($host['auto_updates_enabled'], "Commented config must not read as enabled: {$config}");
+            self::assertSame('config-unparseable', $this->reasons($host['unknown'])['auto_updates_enabled']);
+        }
+    }
+
+    #[Test]
+    public function the_last_directive_wins_as_apt_would(): void
+    {
+        $fixture = $this->fixture()
+            ->withNotifierHelper()
+            ->withRawAutoUpgrades(
+                "APT::Periodic::Unattended-Upgrade \"1\";\nAPT::Periodic::Unattended-Upgrade \"0\";\n"
+            )
+            ->withMachineId();
+
+        $host = (new HostStatusService($fixture->root()))->toArray();
+
+        self::assertFalse($host['auto_updates_enabled'], 'apt is last-wins, so the trailing 0 disables it.');
+    }
+
+    #[Test]
+    public function a_zero_padded_value_is_not_enabled(): void
+    {
+        $fixture = $this->fixture()
+            ->withNotifierHelper()
+            ->withRawAutoUpgrades("APT::Periodic::Unattended-Upgrade \"00\";\n")
+            ->withMachineId();
+
+        self::assertFalse((new HostStatusService($fixture->root()))->toArray()['auto_updates_enabled']);
+    }
+
+    #[Test]
+    public function a_bare_root_reports_every_field_unknown_with_the_right_reason(): void
     {
         $host = (new HostStatusService($this->fixture()->root()))->toArray();
 
+        self::assertSame(
+            [
+                'reboot_pending' => 'reboot-notifier-absent',
+                'reboot_pending_since' => 'reboot-notifier-absent',
+                'auto_updates_enabled' => 'source-missing',
+                'last_check_at' => 'source-missing',
+                'host_id' => 'source-missing',
+            ],
+            $this->reasons($host['unknown'])
+        );
+
         foreach (['reboot_pending', 'reboot_pending_since', 'auto_updates_enabled', 'last_check_at', 'host_id'] as $field) {
             self::assertNull($host[$field], "{$field} should be unknown on a bare root");
-            self::assertArrayHasKey($field, $host['unknown'], "{$field} should carry a reason");
         }
+    }
+
+    #[Test]
+    public function freshness_prefers_the_apt_stamp_over_the_notifier_file(): void
+    {
+        $stamp = time() - (200 * 86400);
+        $notifier = time() - 60;
+
+        $fixture = $this->fixture()
+            ->withNotifierHelper()
+            ->withAutoUpgrades(true)
+            ->withUpdateSuccessStamp($stamp)
+            ->withUpdatesAvailable($notifier)
+            ->withMachineId();
+
+        $host = (new HostStatusService($fixture->root()))->toArray();
+
+        self::assertSame(
+            gmdate('c', $stamp),
+            $host['last_check_at'],
+            'The apt stamp is authoritative even when the notifier file is newer.'
+        );
     }
 
     #[Test]
@@ -123,7 +202,7 @@ final class HostStatusServiceTest extends TestCase
         $host = (new HostStatusService($fixture->root()))->toArray();
 
         self::assertSame(gmdate('c', $checked), $host['last_check_at']);
-        self::assertArrayNotHasKey('last_check_at', $host['unknown']);
+        self::assertArrayNotHasKey('last_check_at', $this->reasons($host['unknown']));
     }
 
     #[Test]
@@ -156,15 +235,13 @@ final class HostStatusServiceTest extends TestCase
         $host = (new HostStatusService($fixture->root()))->toArray();
 
         self::assertNull($host['auto_updates_enabled']);
-        self::assertSame('config-unparseable', $host['unknown']['auto_updates_enabled']);
+        self::assertSame('config-unparseable', $this->reasons($host['unknown'])['auto_updates_enabled']);
     }
 
     #[Test]
     public function an_unreadable_source_reports_unknown_without_raising(): void
     {
-        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
-            self::markTestSkipped('Permission bits do not restrict root.');
-        }
+        $this->skipIfRoot();
 
         $fixture = $this->fixture()
             ->withNotifierHelper()
@@ -175,7 +252,52 @@ final class HostStatusServiceTest extends TestCase
         $host = (new HostStatusService($fixture->root()))->toArray();
 
         self::assertNull($host['auto_updates_enabled']);
-        self::assertSame('source-unreadable', $host['unknown']['auto_updates_enabled']);
+        self::assertSame('source-unreadable', $this->reasons($host['unknown'])['auto_updates_enabled']);
+    }
+
+    #[Test]
+    public function an_unreadable_freshness_source_is_not_reported_as_missing(): void
+    {
+        $this->skipIfRoot();
+
+        $fixture = $this->fixture()
+            ->withNotifierHelper()
+            ->withAutoUpgrades(true)
+            ->withMachineId()
+            ->withUnsearchableRebootDir();
+
+        // A present-but-unstattable stamp must not read as "this host has no stamp".
+        $fixture->withUpdateSuccessStamp(time() - 60);
+        chmod($fixture->path('var/lib/apt/periodic'), 0000);
+
+        $host = (new HostStatusService($fixture->root()))->toArray();
+
+        self::assertNull($host['last_check_at']);
+        self::assertSame('source-missing', $this->reasons($host['unknown'])['last_check_at']);
+
+        chmod($fixture->path('var/lib/apt/periodic'), 0755);
+    }
+
+    #[Test]
+    public function the_unknown_field_keeps_one_json_type_in_every_state(): void
+    {
+        $healthy = $this->fixture()
+            ->withNotifierHelper()
+            ->withAutoUpgrades(true)
+            ->withUpdateSuccessStamp(time() - 60)
+            ->withMachineId();
+
+        $degraded = $this->fixture()->withNotifierHelper()->withMachineId();
+
+        $encodedHealthy = json_decode(json_encode((new HostStatusService($healthy->root()))->toArray()), false);
+        $encodedDegraded = json_decode(json_encode((new HostStatusService($degraded->root()))->toArray()), false);
+
+        // An empty PHP map encodes as [] and a populated one as {}, which would flip the
+        // consumer's type on exactly the healthy host. A list keeps one shape in both states.
+        self::assertIsArray($encodedHealthy->unknown);
+        self::assertIsArray($encodedDegraded->unknown);
+        self::assertSame([], $encodedHealthy->unknown);
+        self::assertSame('auto_updates_enabled', $encodedDegraded->unknown[0]->field);
     }
 
     #[Test]
@@ -207,13 +329,5 @@ final class HostStatusServiceTest extends TestCase
     private function isOpaqueId(mixed $value): bool
     {
         return is_string($value) && preg_match('/^[0-9a-f]{64}$/', $value) === 1;
-    }
-
-    private function fixture(): HostFixture
-    {
-        $fixture = HostFixture::create();
-        $this->fixtures[] = $fixture;
-
-        return $fixture;
     }
 }

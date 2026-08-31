@@ -6,22 +6,11 @@ namespace astuteo\astuteopulse\tests;
 
 use astuteo\astuteopulse\services\HostStatusService;
 use astuteo\astuteopulse\tests\support\HostFixture;
+use astuteo\astuteopulse\tests\support\HostTestCase;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 
-final class HostIdentityTest extends TestCase
+final class HostIdentityTest extends HostTestCase
 {
-    private array $fixtures = [];
-
-    protected function tearDown(): void
-    {
-        foreach ($this->fixtures as $fixture) {
-            $fixture->cleanup();
-        }
-
-        $this->fixtures = [];
-    }
-
     #[Test]
     public function sites_on_the_same_host_derive_the_same_identifier(): void
     {
@@ -35,10 +24,22 @@ final class HostIdentityTest extends TestCase
     }
 
     #[Test]
+    public function the_derivation_is_pinned_to_its_key(): void
+    {
+        $fixture = $this->fixture()->withMachineId();
+
+        // Inlined rather than read from the class, so rotating or dropping the key fails here.
+        self::assertSame(
+            hash_hmac('sha256', HostFixture::MACHINE_ID, 'astuteo-pulse.host-id.v1'),
+            (new HostStatusService($fixture->root()))->toArray()['host_id']
+        );
+    }
+
+    #[Test]
     public function different_hosts_derive_different_identifiers(): void
     {
-        $one = $this->fixture()->withMachineId('11111111111111111111111111111111');
-        $two = $this->fixture()->withMachineId('22222222222222222222222222222222');
+        $one = $this->fixture()->withMachineId('1111111111111111111111111111111a');
+        $two = $this->fixture()->withMachineId('2222222222222222222222222222222b');
 
         self::assertNotSame(
             (new HostStatusService($one->root()))->toArray()['host_id'],
@@ -63,7 +64,20 @@ final class HostIdentityTest extends TestCase
         $host = (new HostStatusService($this->fixture()->root()))->toArray();
 
         self::assertNull($host['host_id']);
-        self::assertSame('source-missing', $host['unknown']['host_id']);
+        self::assertSame('source-missing', $this->reasons($host['unknown'])['host_id']);
+    }
+
+    #[Test]
+    public function an_unreadable_machine_id_reports_unknown(): void
+    {
+        $this->skipIfRoot();
+
+        $fixture = $this->fixture()->withMachineId()->withUnreadable('etc/machine-id');
+
+        $host = (new HostStatusService($fixture->root()))->toArray();
+
+        self::assertNull($host['host_id']);
+        self::assertSame('source-unreadable', $this->reasons($host['unknown'])['host_id']);
     }
 
     #[Test]
@@ -74,14 +88,21 @@ final class HostIdentityTest extends TestCase
         $host = (new HostStatusService($fixture->root()))->toArray();
 
         self::assertNull($host['host_id']);
-        self::assertSame('machine-id-empty', $host['unknown']['host_id']);
+        self::assertSame('machine-id-empty', $this->reasons($host['unknown'])['host_id']);
     }
 
-    private function fixture(): HostFixture
+    #[Test]
+    public function a_malformed_machine_id_reports_unknown_rather_than_collapsing_hosts(): void
     {
-        $fixture = HostFixture::create();
-        $this->fixtures[] = $fixture;
+        // systemd writes this sentinel on a host whose ID was never committed. Hashing it would
+        // give every such host in the fleet the same identifier.
+        foreach (['uninitialized', 'not-hex-at-all', 'abc123'] as $value) {
+            $fixture = $this->fixture()->withMachineId($value);
 
-        return $fixture;
+            $host = (new HostStatusService($fixture->root()))->toArray();
+
+            self::assertNull($host['host_id'], "Malformed machine-id must not be hashed: {$value}");
+            self::assertSame('machine-id-invalid', $this->reasons($host['unknown'])['host_id']);
+        }
     }
 }
