@@ -16,11 +16,7 @@ use yii\base\Module;
  * Service for broadcasting system status information for Craft CMS installations.
  */
 class BroadcastStatusService {
-    // Declared so the monitor can branch when the existing untyped keys are reshaped.
-    private const FEED_VERSION = 1;
-
-    // Custom rather than Authorization, which some hosts strip before it reaches PHP.
-    private const AUTH_HEADER = 'X-Astuteo-Key';
+    public const CREDENTIAL_HEADER = 'X-Astuteo-Pulse-Key';
 
     private static string $_siteUrl;
 
@@ -41,14 +37,38 @@ class BroadcastStatusService {
      */
     public static function checkAuthorized(): bool
     {
-        $siteKey = (string)getenv('ASTUTEO_API_KEY');
-        if ($siteKey === '') {
-            return false; // an unset key must never authorize, only deny
+        $request = Craft::$app->getRequest();
+
+        return self::credentialMatches(
+            getenv('ASTUTEO_API_KEY'),
+            $request->getHeaders()->get(self::CREDENTIAL_HEADER),
+            $request->getParam('key')
+        );
+    }
+
+    /**
+     * Compares a presented credential against the site key
+     *
+     * The header is authoritative; the query parameter is the deprecated transitional path kept
+     * so a site and the monitor can update independently. Both are removed together in a later
+     * release, at which point the query parameter stops being accepted.
+     *
+     * @param mixed $siteKey Configured key, or false when the environment variable is unset
+     */
+    public static function credentialMatches(mixed $siteKey, mixed $header, mixed $queryParam): bool
+    {
+        // getenv() returns false when unset, and hash_equals() raises a TypeError on a non-string.
+        if (!is_string($siteKey) || $siteKey === '') {
+            return false;
         }
 
-        $requestKey = (string)Craft::$app->request->getHeaders()->get(self::AUTH_HEADER, '');
+        $presented = is_string($header) && $header !== '' ? $header : $queryParam;
 
-        return hash_equals($siteKey, $requestKey);
+        if (!is_string($presented) || $presented === '') {
+            return false;
+        }
+
+        return hash_equals($siteKey, $presented);
     }
 
     /**
@@ -89,16 +109,32 @@ class BroadcastStatusService {
                 'pluginIssues' => self::_licenseIssues(),
                 'packageJson' => self::_packageJson(),
                 'todos' => self::_todos(),
-                'feedVersion' => self::FEED_VERSION,
-                'host' => HostStatusService::get(),
+                'host' => self::_host(),
             ]
         ];
         return json_encode($siteInfo);
     }
 
     /**
+     * Gets host reboot and patch-liveness state
+     *
+     * @return array<string, mixed> Host state, or the all-unknown shape if the read failed
+     */
+    private static function _host(): array
+    {
+        try {
+            return (new HostStatusService())->toArray();
+        } catch (\Throwable $e) {
+            // A host read must never be able to take the rest of the feed down.
+            Craft::error('Host status read failed: ' . $e->getMessage(), __METHOD__);
+
+            return HostStatusService::unavailable();
+        }
+    }
+
+    /**
      * Gets the database driver name and version
-     * 
+     *
      * @return string Database driver name and version
      */
     private static function _dbDriver(): string

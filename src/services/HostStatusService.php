@@ -1,163 +1,264 @@
 <?php
 
+declare(strict_types=1);
+
 namespace astuteo\astuteopulse\services;
 
 /**
- * Read host patch state from sources available to the web user.
+ * Reports host reboot state from files the web user can already read.
  *
- * An unreadable source yields a null value with a reason, never a healthy default.
- * A reason beside a non-null value means that value was inferred, not confirmed.
+ * Every value is a boolean, timestamp or opaque identifier. No version string, package name
+ * or count is ever emitted, so a leaked API key discloses nothing matchable to a vulnerability.
  */
 class HostStatusService
 {
-    private const REBOOT_FLAG = '/var/run/reboot-required';
-    private const APT_CONF_DIR = '/etc/apt/apt.conf.d';
-    private const MACHINE_ID = '/etc/machine-id';
+    private const NOTIFIER_HELPER = 'usr/share/update-notifier/notify-reboot-required';
+    private const REBOOT_REQUIRED = 'var/run/reboot-required';
+    private const AUTO_UPGRADES = 'etc/apt/apt.conf.d/20auto-upgrades';
+    private const SUCCESS_STAMP = 'var/lib/apt/periodic/update-success-stamp';
+    private const UPDATES_AVAILABLE = 'var/lib/update-notifier/updates-available';
+    private const MACHINE_ID = 'etc/machine-id';
 
-    // Ordered by how directly each marks a completed update check.
-    private const UPDATE_CHECK_SOURCES = [
-        'apt_periodic' => '/var/lib/apt/periodic/update-success-stamp',
-        'update_notifier' => '/var/lib/update-notifier/updates-available',
-        'apt_lists' => '/var/lib/apt/lists',
+    private const FIELDS = [
+        'reboot_pending',
+        'reboot_pending_since',
+        'auto_updates_enabled',
+        'last_check_at',
+        'host_id',
     ];
 
-    /**
-     * @return array<string, array{value: mixed, reason?: string, since?: string, durationSeconds?: int, source?: string}>
-     */
-    public static function get(): array
-    {
-        $producers = [
-            'id' => fn() => self::_hostId(),
-            'rebootPending' => fn() => self::_rebootPending(),
-            'autoUpdates' => fn() => self::_autoUpdates(),
-            'lastUpdateCheck' => fn() => self::_lastUpdateCheck(),
-        ];
+    public const REASON_NOTIFIER_ABSENT = 'reboot-notifier-absent';
+    public const REASON_MISSING = 'source-missing';
+    public const REASON_UNREADABLE = 'source-unreadable';
+    public const REASON_UNPARSEABLE = 'config-unparseable';
+    public const REASON_EMPTY = 'machine-id-empty';
+    public const REASON_INVALID = 'machine-id-invalid';
+    public const REASON_READER_FAILED = 'reader-failed';
 
-        $host = [];
-        foreach ($producers as $key => $producer) {
-            try {
-                $host[$key] = $producer();
-            } catch (\Throwable) {
-                $host[$key] = self::_unknown('read_failed');
-            }
-        }
+    /** Fixed and public by design: sites on one server must derive the same identifier. */
+    private const HOST_ID_KEY = 'astuteo-pulse.host-id.v1';
+
+    private string $root;
+
+    /** @var array<string, string> */
+    private array $unknown = [];
+
+    public function __construct(string $root = '/')
+    {
+        $this->root = rtrim($root, '/') . '/';
+    }
+
+    /**
+     * @return array{
+     *     reboot_pending: bool|null,
+     *     reboot_pending_since: string|null,
+     *     auto_updates_enabled: bool|null,
+     *     last_check_at: string|null,
+     *     host_id: string|null,
+     *     unknown: list<array{field: string, reason: string}>
+     * }
+     */
+    public function toArray(): array
+    {
+        $this->unknown = [];
+
+        [$pending, $since] = $this->reboot();
+        $autoUpdates = $this->autoUpdatesEnabled();
+        $lastCheck = $this->lastCheckAt();
+        $hostId = $this->hostId();
+
+        return [
+            'reboot_pending' => $pending,
+            'reboot_pending_since' => $since,
+            'auto_updates_enabled' => $autoUpdates,
+            'last_check_at' => $lastCheck,
+            'host_id' => $hostId,
+            'unknown' => $this->unknownRecords(),
+        ];
+    }
+
+    /**
+     * The all-unknown shape, for callers that could not run a read at all.
+     *
+     * @return array<string, mixed>
+     */
+    public static function unavailable(): array
+    {
+        $host = array_fill_keys(self::FIELDS, null);
+        $host['unknown'] = array_map(
+            static fn(string $field): array => ['field' => $field, 'reason' => self::REASON_READER_FAILED],
+            self::FIELDS
+        );
 
         return $host;
     }
 
-    private static function _hostId(): array
+    /**
+     * @return array{0: bool|null, 1: string|null}
+     */
+    private function reboot(): array
     {
-        if (!is_readable(self::MACHINE_ID)) {
-            return self::_unknown(file_exists(self::MACHINE_ID) ? 'source_unreadable' : 'source_missing');
+        // The flag only ever appears if a postinst called the notifier helper. Without the helper
+        // installed the host can never raise it, so a missing flag says nothing about reboot state.
+        if (!@file_exists($this->path(self::NOTIFIER_HELPER))) {
+            $this->markUnknown(['reboot_pending', 'reboot_pending_since'], self::REASON_NOTIFIER_ABSENT);
+
+            return [null, null];
         }
 
-        $id = trim((string)@file_get_contents(self::MACHINE_ID));
-        if ($id === '') {
-            return self::_unknown('source_unparseable');
-        }
+        $flag = $this->path(self::REBOOT_REQUIRED);
 
-        return self::_field(substr(hash('sha256', $id), 0, 32)); // systemd treats machine-id as confidential
-    }
+        if (!@file_exists($flag)) {
+            // An absent flag only means "no reboot" if the directory was actually searchable.
+            if (!@is_dir(dirname($flag)) || !@is_executable(dirname($flag))) {
+                $this->markUnknown(['reboot_pending', 'reboot_pending_since'], self::REASON_UNREADABLE);
 
-    private static function _rebootPending(): array
-    {
-        $dir = dirname(self::REBOOT_FLAG);
-        if (!is_dir($dir) || !is_readable($dir)) {
-            return self::_unknown('source_unreadable');
-        }
-
-        if (file_exists(self::REBOOT_FLAG)) {
-            $field = self::_field(true);
-            $since = @filemtime(self::REBOOT_FLAG);
-            if ($since !== false) {
-                $field['since'] = date(DATE_ATOM, $since); // /var/run is tmpfs cleared on boot, so mtime is when it became pending
-                $field['durationSeconds'] = max(0, time() - $since); // computed here; the monitor has its own clock
+                return [null, null];
             }
 
-            return $field;
+            return [false, null];
         }
 
-        // Without apt's update tooling nothing writes the flag, so absence proves nothing.
-        if (!self::_aptConfigReadable()) {
-            return self::_unknown('mechanism_unconfirmed');
+        $timestamp = @filemtime($flag);
+
+        if ($timestamp === false) {
+            $this->unknown['reboot_pending_since'] = self::REASON_UNREADABLE;
+
+            return [true, null];
         }
 
-        return self::_field(false);
+        return [true, gmdate('c', $timestamp)];
     }
 
-    private static function _autoUpdates(): array
+    private function autoUpdatesEnabled(): ?bool
     {
-        if (!self::_aptConfigReadable()) {
-            return self::_unknown('source_unreadable');
+        $file = $this->path(self::AUTO_UPGRADES);
+
+        if (!@file_exists($file)) {
+            $this->unknown['auto_updates_enabled'] = self::REASON_MISSING;
+
+            return null;
         }
 
-        $files = glob(self::APT_CONF_DIR . '/*');
-        if ($files === false) {
-            return self::_unknown('source_unreadable');
-        }
-        sort($files);
+        $contents = @file_get_contents($file);
 
-        $enabled = null;
-        foreach ($files as $file) {
-            if (!is_file($file) || !is_readable($file)) {
+        if ($contents === false) {
+            $this->unknown['auto_updates_enabled'] = self::REASON_UNREADABLE;
+
+            return null;
+        }
+
+        $active = preg_replace(['#/\*.*?\*/#s', '/^\s*(?:\/\/|#).*$/m'], '', $contents) ?? '';
+
+        if (!preg_match_all('/APT::Periodic::Unattended-Upgrade\s+"(\d+)"/i', $active, $matches)) {
+            $this->unknown['auto_updates_enabled'] = self::REASON_UNPARSEABLE;
+
+            return null;
+        }
+
+        // apt merges apt.conf.d in lexical order and the last assignment wins.
+        return (int)end($matches[1]) !== 0;
+    }
+
+    /**
+     * Both sources are stat-only. updates-available holds the human readable apt-check output,
+     * including update counts and ESM status, so reading its contents would breach the no-counts rule.
+     */
+    private function lastCheckAt(): ?string
+    {
+        $sourceSeen = false;
+
+        foreach ([self::SUCCESS_STAMP, self::UPDATES_AVAILABLE] as $relative) {
+            $file = $this->path($relative);
+
+            if (!@file_exists($file)) {
                 continue;
             }
 
-            $contents = @file_get_contents($file);
-            if ($contents === false) {
-                continue;
-            }
+            $sourceSeen = true;
+            $timestamp = @filemtime($file);
 
-            // Later files in apt.conf.d override earlier ones, so the last match wins.
-            if (preg_match_all('/^\s*APT::Periodic::Unattended-Upgrade\s+"(\d+)"/mi', $contents, $matches)) {
-                $enabled = end($matches[1]) !== '0';
+            if ($timestamp !== false) {
+                return gmdate('c', $timestamp);
             }
         }
 
-        if ($enabled === null) {
-            return self::_field(false, 'source_missing');
-        }
+        $this->unknown['last_check_at'] = $sourceSeen ? self::REASON_UNREADABLE : self::REASON_MISSING;
 
-        return self::_field($enabled);
+        return null;
     }
 
-    private static function _lastUpdateCheck(): array
+    /**
+     * systemd requires the machine ID be hashed with an application key before leaving the host,
+     * so the raw value is never emitted and cannot be recovered from what is.
+     */
+    private function hostId(): ?string
     {
-        foreach (self::UPDATE_CHECK_SOURCES as $name => $path) {
-            if (!file_exists($path) || !is_readable($path)) {
-                continue;
+        $file = $this->path(self::MACHINE_ID);
+
+        if (!@file_exists($file)) {
+            $this->unknown['host_id'] = self::REASON_MISSING;
+
+            return null;
+        }
+
+        $contents = @file_get_contents($file);
+
+        if ($contents === false) {
+            $this->unknown['host_id'] = self::REASON_UNREADABLE;
+
+            return null;
+        }
+
+        $machineId = trim($contents);
+
+        if ($machineId === '') {
+            $this->unknown['host_id'] = self::REASON_EMPTY;
+
+            return null;
+        }
+
+        // Rejects systemd's "uninitialized" sentinel, which would otherwise collapse every
+        // first-boot host in the fleet onto one identifier.
+        if (!preg_match('/^[0-9a-f]{32}$/', $machineId)) {
+            $this->unknown['host_id'] = self::REASON_INVALID;
+
+            return null;
+        }
+
+        return hash_hmac('sha256', $machineId, self::HOST_ID_KEY);
+    }
+
+    /**
+     * A list, not a map, so the JSON type is the same whether or not anything is unknown.
+     *
+     * @return list<array{field: string, reason: string}>
+     */
+    private function unknownRecords(): array
+    {
+        $records = [];
+
+        foreach (self::FIELDS as $field) {
+            if (isset($this->unknown[$field])) {
+                $records[] = ['field' => $field, 'reason' => $this->unknown[$field]];
             }
-
-            $mtime = @filemtime($path);
-            if ($mtime === false) {
-                continue;
-            }
-
-            $field = self::_field(date(DATE_ATOM, $mtime));
-            $field['source'] = $name;
-            return $field;
         }
 
-        return self::_unknown('source_missing');
+        return $records;
     }
 
-    private static function _aptConfigReadable(): bool
+    /**
+     * @param list<string> $fields
+     */
+    private function markUnknown(array $fields, string $reason): void
     {
-        return is_dir(self::APT_CONF_DIR) && is_readable(self::APT_CONF_DIR);
-    }
-
-    private static function _field(mixed $value, ?string $reason = null): array
-    {
-        $field = ['value' => $value];
-        if ($reason !== null) {
-            $field['reason'] = $reason;
+        foreach ($fields as $field) {
+            $this->unknown[$field] = $reason;
         }
-
-        return $field;
     }
 
-    private static function _unknown(string $reason): array
+    private function path(string $relative): string
     {
-        return ['value' => null, 'reason' => $reason];
+        return $this->root . $relative;
     }
 }
