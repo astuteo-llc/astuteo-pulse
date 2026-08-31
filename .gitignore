@@ -35,3 +35,6 @@ prepros-6.config
 # PHPUNIT
 .phpunit.cache
 .phpunit.result.cache
+
+# DOCS
+docs
