@@ -10,58 +10,49 @@
 
 namespace astuteo\astuteopulse\controllers;
 
-use astuteo\astuteopulse\jobs\ReportJob;
 use astuteo\astuteopulse\services\BroadcastStatusService;
+
 
 use Craft;
 use craft\web\Controller;
+use craft\web\Response;
 
-/**
- * Default Controller
- *
- * Generally speaking, controllers are the middlemen between the front end of
- * the CP/website and your plugin’s services. They contain action methods which
- * handle individual tasks.
- *
- * A common pattern used throughout Craft involves a controller action gathering
- * post data, saving it on a model, passing the model off to a service, and then
- * responding to the request appropriately depending on the service method’s response.
- *
- * Action methods begin with the prefix “action”, followed by a description of what
- * the method does (for example, actionSaveIngredient()).
- *
- * https://craftcms.com/docs/plugins/controllers
- *
- * @author    Astuteo
- * @package   PulseReceiver
- * @since     1.0.0
- */
+
 class DefaultController extends Controller
 {
-
-    // Protected Properties
-    // =========================================================================
+    protected array|int|bool $allowAnonymous = ['index', 'json'];
 
     /**
-     * @var    bool|array Allows anonymous access to this controller's actions.
-     *         The actions must be in 'kebab-case'
-     * @access protected
+     * Handles the index action
+     * 
+     * @return \yii\web\Response
      */
-    protected $allowAnonymous = ['index', 'do-something'];
-
-    // Public Methods
-    // =========================================================================
-
-    /**
-     * Handle a request going to our plugin's index action URL,
-     * e.g.: actions/pulse-receiver/default
-     *
-     */
-    public function actionIndex()
+    public function actionIndex(): bool|string
     {
+        $this->uncacheableResponse();
 
-        $result = BroadcastStatusService::broadcastInfo();
-        return $result;
+        return BroadcastStatusService::broadcastInfo();
+    }
+
+    public function actionJson(): \yii\web\Response
+    {
+        $response = $this->uncacheableResponse();
+        $response->format = \yii\web\Response::FORMAT_JSON;
+        $response->data = json_decode(BroadcastStatusService::broadcastInfo(), true);
+        return $response;
+    }
+
+    /**
+     * The credential is a header, so the URL no longer varies by caller and a shared cache
+     * could otherwise serve an authorized report to an unauthenticated request.
+     */
+    private function uncacheableResponse(): Response
+    {
+        $response = Craft::$app->getResponse();
+        $response->setNoCacheHeaders();
+        $response->getHeaders()->set('Vary', BroadcastStatusService::CREDENTIAL_HEADER);
+
+        return $response;
     }
 
 }

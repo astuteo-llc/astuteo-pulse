@@ -3,7 +3,7 @@
     "description": "Connecting Astuteo client sites to our monitor.",
     "type": "craft-plugin",
     "prefer-stable": true,
-    "version": "3.0.0",
+    "version": "5.1.4",
     "keywords": [
         "craft",
         "cms",
@@ -11,6 +11,15 @@
         "craft-plugin",
         "astuteo pulse"
     ],
+    "scripts": {
+        "test": "phpunit",
+        "changelog": "conventional-changelog",
+        "release": "conventional-changelog --commit",
+        "release:beta": "conventional-changelog --beta --commit",
+        "release:patch": "conventional-changelog --patch --commit",
+        "release:minor": "conventional-changelog --minor --commit",
+        "release:major": "conventional-changelog --major --commit"
+    },
     "support": {
         "docs": "https://github.com/astuteollc/astuteo-pulse/blob/master/README.md",
         "issues": "https://github.com/astuteollc/astuteo-pulse/issues"
@@ -23,18 +32,23 @@
         }
     ],
     "require": {
-        "craftcms/cms": "^3.0.0",
-        "ext-json": "*",
-        "sleiman/airtable-php": "^2.4"
+        "craftcms/cms": "^4.0.0 || ^5.0.0",
+        "php": "^8.2",
+        "ext-json": "*"
     },
     "require-dev": {
-      "craftcms/cms": "^3.2.0",
-      "codeception/codeception": "^3.0",
-      "vlucas/phpdotenv": "^3.0"
+        "vlucas/phpdotenv": "^3.0",
+        "marcocesarato/php-conventional-changelog": "^1.17",
+        "phpunit/phpunit": "^11.0"
     },
     "autoload": {
         "psr-4": {
-          "astuteo\\astuteopulse\\": "src/"
+            "astuteo\\astuteopulse\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "astuteo\\astuteopulse\\tests\\": "tests/"
         }
     },
     "extra": {
@@ -45,5 +59,12 @@
         "documentationUrl": "https://github.com/astuteollc/astuteo-pulse/blob/master/README.md",
         "changelogUrl": "https://raw.githubusercontent.com/astuteollc/astuteo-pulse/master/CHANGELOG.md",
         "class": "astuteo\\astuteopulse\\AstuteoPulse"
+    },
+    "minimum-stability": "dev",
+    "config": {
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true,
+            "craftcms/plugin-installer": true
+        }
     }
 }

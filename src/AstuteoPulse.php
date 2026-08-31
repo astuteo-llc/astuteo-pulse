@@ -10,10 +10,9 @@
 
 namespace astuteo\astuteopulse;
 
-use Craft;
 use craft\base\Plugin;
-use astuteo\astuteopulse\jobs\services\BroadcastStatusService;
-
+use craft\events\RegisterUrlRulesEvent;
+use craft\web\UrlManager;
 use yii\base\Event;
 
 /**
@@ -26,30 +25,24 @@ use yii\base\Event;
  */
 class AstuteoPulse extends Plugin
 {
-    // Static Properties
-    // =========================================================================
 
-    /**
-     * Static property that is an instance of this plugin class so that it can be accessed via
-     * AstuteoPulse::$plugin
-     *
-     * @var AstuteoPulse
-     */
     public static $plugin;
-
-    // Public Properties
-    // =========================================================================
-
-    public $schemaVersion = '3.0.0';
-    public $hasCpSettings = false;
-    public $hasCpSection = false;
-
-    // Public Methods
-    // =========================================================================
+    public string $schemaVersion = '4.0.0';
+    public bool $hasCpSettings = false;
+    public bool $hasCpSection = false;
 
     public function init()
     {
         parent::init();
         self::$plugin = $this;
+
+        Event::on(
+            UrlManager::class,
+            UrlManager::EVENT_REGISTER_SITE_URL_RULES,
+            function(RegisterUrlRulesEvent $event) {
+                $event->rules['astuteo-pulse'] = 'astuteo-pulse/default/index';
+                $event->rules['astuteo-pulse/json'] = 'astuteo-pulse/default/json';
+            }
+        );
     }
 }
