@@ -21,8 +21,8 @@
         "release:major": "conventional-changelog --major --commit"
     },
     "support": {
-        "docs": "https://github.com/astuteollc/astuteo-pulse/blob/master/README.md",
-        "issues": "https://github.com/astuteollc/astuteo-pulse/issues"
+        "docs": "https://github.com/astuteo-llc/astuteo-pulse/blob/master/README.md",
+        "issues": "https://github.com/astuteo-llc/astuteo-pulse/issues"
     },
     "license": "MIT",
     "authors": [
@@ -56,8 +56,8 @@
         "handle": "astuteo-pulse",
         "developer": "Astuteo",
         "developerUrl": "https://astuteo.com",
-        "documentationUrl": "https://github.com/astuteollc/astuteo-pulse/blob/master/README.md",
-        "changelogUrl": "https://raw.githubusercontent.com/astuteollc/astuteo-pulse/master/CHANGELOG.md",
+        "documentationUrl": "https://github.com/astuteo-llc/astuteo-pulse/blob/master/README.md",
+        "changelogUrl": "https://raw.githubusercontent.com/astuteo-llc/astuteo-pulse/master/CHANGELOG.md",
         "class": "astuteo\\astuteopulse\\AstuteoPulse"
     },
     "minimum-stability": "dev",
