@@ -106,6 +106,7 @@ class BroadcastStatusService {
                 'deprecationNotices' => self::_deprecations(),
                 'pluginsText' => self::_plugins(),
                 'pluginsArray' => self::_getAllPluginInfo(),
+                'pluginUpdates' => self::_pluginUpdates(),
                 'pluginIssues' => self::_licenseIssues(),
                 'packageJson' => self::_packageJson(),
                 'todos' => self::_todos(),
@@ -113,6 +114,27 @@ class BroadcastStatusService {
             ]
         ];
         return json_encode($siteInfo);
+    }
+
+    /**
+     * Gets plugins with a newer release than the one installed
+     *
+     * Reads the update check already refreshed for this request, so it adds no API call.
+     *
+     * @return list<array<string, mixed>>|null Null when the check returned no data
+     */
+    private static function _pluginUpdates(): ?array
+    {
+        try {
+            $updates = Craft::$app->getUpdates();
+            $checked = !empty(Craft::$app->getCache()->get($updates->cacheKey));
+
+            return PluginUpdatesService::describe($updates->getUpdates(), $checked);
+        } catch (\Throwable $e) {
+            Craft::error('Plugin update read failed: ' . $e->getMessage(), __METHOD__);
+
+            return null;
+        }
     }
 
     /**
