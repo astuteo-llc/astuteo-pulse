@@ -4,7 +4,24 @@
 All notable changes to this project will be documented in this file.
 <!--- END HEADER -->
 
+## [5.3.0](https://github.com/astuteo-llc/astuteo-pulse/compare/v5.2.1...v5.3.0) (2026-09-21)
+
+### Features
+
+* Per-plugin version updates in the feed, separate from edition upgrades ([c8eb4b](https://github.com/astuteo-llc/astuteo-pulse/commit/c8eb4bd59762355be6072d725c99cf7fd2be4448))
+
+### Bug Fixes
+
+* Check the credential before refreshing update info, so unauthenticated requests no longer trigger a Craft API call ([3ba7d7](https://github.com/astuteo-llc/astuteo-pulse/commit/3ba7d7ee63234f2b2211f1aead7531e8386dc6ad))
+
+
+---
+
 ## [5.2.1](https://github.com/astuteo-llc/astuteo-pulse/compare/v5.2.0...v5.2.1) (2026-09-20)
+
+### Bug Fixes
+
+* GitHub org in plugin documentation and changelog URLs ([687da8](https://github.com/astuteo-llc/astuteo-pulse/commit/687da8640bd0e411e7ee46c6058d5a14fd107e1f))
 
 
 ---
