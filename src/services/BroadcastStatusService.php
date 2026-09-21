@@ -78,7 +78,6 @@ class BroadcastStatusService {
      */
     public static function broadcastInfo(): string
     {
-        Craft::$app->updates->getUpdates(1);
         if(!self::checkAuthorized()) {
             return json_encode([
                 'status' => 'error',
@@ -86,6 +85,7 @@ class BroadcastStatusService {
                 'data' => null
             ]);
         }
+        Craft::$app->getUpdates()->getUpdates(true);
         self::$_siteUrl = UrlHelper::siteUrl('/');
         $siteInfo = [
             'status' => 'success',
